@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0,initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="renderer" content="webkit">
+	<title>贪吃蛇</title>
+	<style type="text/css">
+		html,body {
+			margin: 0;
+			height: 100%;
+			overflow: hidden;
+		}
+		canvas {
+			margin: 0 auto;
+			display: block;
+			background-color: #f5f5f5;
+		}
+	</style>
+</head>
+<body>
+	<canvas width="600" height="600" id="canvas"></canvas>
+	<script type="text/javascript">
+	(function(win, doc, undefined){
+		function Snake(){
+			this.width = 20;
+			this.canvas = doc.querySelector('#canvas');
+			this.ctx = this.canvas.getContext('2d');
+			this.dir = 2; //1 上 2 右 3 下 4 左
+			this.gameStatus = 1; //1 未开始， 2已开始 3结束
+			this.animateHandle = null;
+			this.time = 500;
+			this.prevTime;
+			this.canvasW = 600;
+			this.canvasH = 600;
+			this.snakes = [];
+			this.randomPoint = null;
+
+			this.init();
+		}
+
+		Snake.prototype.init = function(){
+			var snakes = this.snakes;
+
+			snakes.push(new Point(320, 280));
+			snakes.push(new Point(300, 280));
+			snakes.push(new Point(280, 280));
+			this.gameStatus = 2;
+			this.time = 500;
+			this.prevTime = Date.now();
+			this.initEvent();
+			this.getRandomPoint();
+			this.animate();
+		};
+
+		Snake.prototype.animate = function(){
+			var self = this;
+			var currentTime = Date.now();
+			var time = this.time + (currentTime - this.prevTime);
+
+			if(this.gameStatus === 3){
+				return false;
+			}
+			this.prevTime = currentTime;
+			if(time > 500) {
+				this.move();
+				this.time = time - 500;
+			} else {
+				this.time = time;
+			}
+			this.animateHandle = win.requestAnimationFrame(function(){
+				self.animate();
+			});
+		};
+
+		Snake.prototype.reinit = function(){
+			var snakes = this.snakes;
+
+			snakes.length = 0;
+
+			snakes.push(new Point(320, 280));
+			snakes.push(new Point(300, 280));
+			snakes.push(new Point(280, 280));
+			this.time = 500;
+			this.prevTime = Date.now();
+			this.gameStatus = 2;
+			this.getRandomPoint();
+			this.animate();
+		};
+
+		Snake.prototype.initEvent = function(){
+			var self = this;
+			window.addEventListener('keyup', function(e){
+				switch(e.which){
+					case 37:
+						if(Math.abs(4 - self.dir) % 2 === 1){
+							self.dir = 4;
+						}
+						break;
+					case 38:
+						if(Math.abs(1 - self.dir) % 2 === 1){
+							self.dir = 1;
+						}
+						break;
+					case 39:
+						if(Math.abs(2 - self.dir) % 2 === 1){
+							self.dir = 2;
+						}
+						break;
+					case 40:
+						if(Math.abs(3 - self.dir) % 2 === 1){
+							self.dir = 3;
+						}
+						break;
+					default:
+						break;
+				}
+			}, false);
+
+			window.addEventListener('click', function(e){
+				if(self.gameStatus === 3 || self.gameStatus === 1){
+					self.reinit();
+				}
+			}, false);
+
+			window.addEventListener('keyup', function(e){
+				if(e.which === 13){
+					if(self.gameStatus === 3 || self.gameStatus === 1){
+						self.reinit();
+					}
+				}
+			}, false);
+		};
+
+		Snake.prototype.draw = function(){
+			var snakes = this.snakes;
+			var ctx = this.ctx;
+			var w = this.width;
+			var randomPoint = this.randomPoint;
+			ctx.clearRect(0, 0, this.canvasW, this.canvasH);
+			if(this.gameStatus === 3) {
+				ctx.fillText("游戏已结束,点击屏幕重新开始", (this.canvasW - ctx.measureText("游戏已结束,点击屏幕重新开始").width) / 2, this.canvasH / 2);
+
+				return false;
+			}
+			ctx.save();
+			ctx.fillStyle="#0000ff";
+			snakes.forEach(function(ele, index){
+				ctx.fillRect(ele.x, ele.y, w, w);
+			});
+			ctx.restore()
+
+			ctx.save();
+			ctx.fillStyle="#ff0000";
+			
+			ctx.fillRect(randomPoint.x, randomPoint.y, w, w);
+			
+			ctx.restore()
+		};
+
+		Snake.prototype.getRandomPoint = function(){
+			var w = this.canvasW;
+			var h = this.canvasH;
+			var ww = this.width;
+			var snakes = this.snakes;
+
+			var point = new Point(getRandomInt(0, w, ww), getRandomInt(0, h, ww));
+
+			var isValidPoint = snakes.some(function(ele){
+				return  !((ele.x === point.x) && (ele.y === point.y));
+			});
+
+			if(isValidPoint) {
+				this.randomPoint = point;
+			} else {
+				this.getRandomPoint();
+			}
+
+		};
+
+		Snake.prototype.move = function(dir) {
+			var dir = dir || this.dir;
+			var snakes = this.snakes;
+			var w = this.width;
+			var randomPoint = this.randomPoint;
+			var snake, item;
+
+			//验证合法性
+			if(dir < 1 || dir > 4) {
+				dir = this.dir
+			}
+
+			this.dir = dir;
+			snake = snakes.pop();
+			item = new Point(0, 0);
+			item.x = snakes[0].x;
+			item.y = snakes[0].y;
+			switch(dir){
+				case 1: 
+					item.y -= w;
+					if(isPointEqual(item, randomPoint)){
+						snakes.push(snake);
+						this.getRandomPoint();
+					}
+					break;
+				case 2: 
+					item.x += w;
+					if(isPointEqual(item, randomPoint)){
+						snakes.push(snake);
+						this.getRandomPoint();
+					}
+					break;
+				case 3: 
+					item.y += w;
+					if(isPointEqual(item, randomPoint)){
+						snakes.push(snake);
+						this.getRandomPoint();
+					}
+					break;
+				case 4:
+					item.x -= w;
+					if(isPointEqual(item, randomPoint)){
+						snakes.push(snake);
+						this.getRandomPoint();
+					}
+					break;
+				default:
+					break;
+			}
+
+			snakes.unshift(item);
+			if(item.x < 0 || item.x > (this.canvasW - w) || item.y < 0 || item.y > (this.canvasH - w) || isDupArray(snakes)) {
+				this.gameStatus = 3;
+				
+			}
+			this.draw();
+		};
+
+
+		//工具类
+		function Point(x, y) {
+			this.x = x;
+			this.y = y;
+		}
+		function isPointEqual(p1, p2) {
+			return (p1.x === p2.x) && (p1.y === p2.y)
+		}
+		function isDupArray(arr){
+			var ret = false;
+			var len, i, j, item;
+			for(i = 0, len = arr.length; i < len; i++) {
+				item = arr[i]
+				for(j = i + 1; j < len; j++){
+					if((item.x === arr[j].x) && (item.y === arr[j].y)){
+						ret = true;
+					}
+				}
+			}
+			return ret;
+		}
+		function getRandomInt(min, max, mod){
+			var num =  (min + (max - min) * Math.random()) | 0;
+
+			return (num - (num % mod))
+		}
+
+
+		//开始游戏
+		new Snake();
+	})(window, document, undefined);
+	</script>
+</body>
+</html>
